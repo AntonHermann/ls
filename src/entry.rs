@@ -47,7 +47,7 @@ impl Display for FileType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PermissionTriad {
     pub r: bool,
     pub w: bool,
@@ -69,7 +69,7 @@ impl Display for PermissionTriad {
         write!(f, "{}{}{}", r, w, x)
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Permissions {
     pub owner : PermissionTriad,
     pub group : PermissionTriad,
@@ -101,8 +101,8 @@ pub struct Entry {
     pub size: u64,
     pub modified: DateTime<Local>,
     pub num_hardlinks: u64,
-    pub user: Option<User>,
-    pub group: Option<Group>,
+    pub user: User,
+    pub group: Group,
 }
 impl Entry {
     pub fn from_dir_entry(de: &fs::DirEntry) -> Result<Self, Error> {
@@ -114,8 +114,10 @@ impl Entry {
         let size: u64 = metadata.len();
         let modified: DateTime<Local> = DateTime::from(metadata.modified()?);
         let num_hardlinks: u64 = metadata.nlink();
-        let user: Option<User> = users::get_user_by_uid(metadata.uid());
-        let group: Option<Group> = users::get_group_by_gid(metadata.gid());
+        let user : User  = users::get_user_by_uid (metadata.uid())
+            .ok_or(Error::ParseIdError)?;
+        let group: Group = users::get_group_by_gid(metadata.gid())
+            .ok_or(Error::ParseIdError)?;
 
         Ok(Entry {
             metadata, name, path, file_type, permissions, size,
@@ -125,10 +127,8 @@ impl Entry {
 }
 impl Display for Entry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let user_name : String = self.user .as_ref()
-            .map(|u| { u.name().into() }).unwrap_or("???".into());
-        let group_name: String = self.group.as_ref()
-            .map(|g| { g.name().into() }).unwrap_or("???".into());
+        let user_name : String = self.user .name().into();
+        let group_name: String = self.group.name().into();
 
         write!(f, "{}{} {} {} {} {:>5} {} {}",
             self.file_type,

@@ -11,10 +11,11 @@ extern crate clap;
 extern crate term_grid;
 extern crate term_size;
 
-pub mod entry;
+mod entry;
 mod error;
 mod opts;
 mod view;
+mod filter;
 
 pub use entry::Entry;
 pub use error::*;
@@ -25,8 +26,9 @@ use structopt::StructOpt;
 
 fn main() -> Result<(), Error> {
     let opts: Opts = Opts::from_args();
-    println!("{:?}", opts);
+    if opts.debug { eprintln!("{:?}", opts) }
 
+    // TODO: add proper handling for other dirs
     let dir = opts.files.get(0).cloned().unwrap_or(env::current_dir()?);
 
     let res: Result<Vec<_>,_> = dir.read_dir()?.map(|e: Result<_,_>| {
